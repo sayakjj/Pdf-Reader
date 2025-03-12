@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Reader with Speech</title>
+    <style>
+        #canvas-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF Reader with Speech</h1>
+    <input type="file" id="pdf-upload" accept="application/pdf">
+    <div id="canvas-container">
+        <canvas id="pdf-canvas"></canvas>
+    </div>
+    <button id="read-aloud">Read Aloud</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script>
+        const fileInput = document.getElementById("pdf-upload");
+        const canvas = document.getElementById("pdf-canvas");
+        const context = canvas.getContext("2d");
+        const readAloudButton = document.getElementById("read-aloud");
+        let pdfText = ""; // To store extracted text
+
+        fileInput.addEventListener("change", handleFileSelect);
+        readAloudButton.addEventListener("click", readAloud);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.type === "application/pdf") {
+                const fileReader = new FileReader();
+                fileReader.onload = function() {
+                    const pdfData = new Uint8Array(fileReader.result);
+                    loadPDF(pdfData);
+                };
+                fileReader.readAsArrayBuffer(file);
+            }
+        }
+
+        async function loadPDF(pdfData) {
+            const pdf = await pdfjsLib.getDocument(pdfData).promise;
+            const page = await pdf.getPage(1);  // Load the first page
+            const viewport = page.getViewport({ scale: 1 });
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+
+            await page.render(renderContext).promise;
+
+            // Extract text from the first page
+            const pageText = await page.getTextContent();
+            pdfText = pageText.items.map(item => item.str).join(" ");
+        }
+
+        function readAloud() {
+            if (pdfText) {
+                const utterance = new SpeechSynthesisUtterance(pdfText);
+                speechSynthesis.speak(utterance);
+            } else {
+                alert("Please upload a PDF first!");
+            }
+        }
+    </script>
+</body>
+</html>
